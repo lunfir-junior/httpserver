@@ -2,6 +2,9 @@
 #define HTTPSERVER_H
 
 #include <QObject>
+#include <QCoreApplication>
+#include <QFile>
+#include <QTextStream>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QDateTime>
