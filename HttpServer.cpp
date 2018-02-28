@@ -24,7 +24,7 @@ HttpServer::HttpServer(QObject *parent) : QTcpServer(parent)
 
 void HttpServer::incomingConnection(qintptr socketDescriptor)
 {
-  QTcpSocket *socket = new QTcpSocket()/*this->nextPendingConnection()*/;
+  QTcpSocket *socket = new QTcpSocket();
 
   socket->setSocketDescriptor(socketDescriptor);
 
@@ -36,7 +36,19 @@ void HttpServer::slotReadyRead()
   QTcpSocket *socket = (QTcpSocket*) sender();
   QByteArray data = socket->readAll();
 
-  qDebug().noquote() << "client data: " << data;
+//  qDebug().noquote() << "client data: " << data;
+
+  /*%1*/
+  QString response = "HTTP/1.1 200 OK\nConnection: close\n";
+  response.append("Content-Length: 89\n");
+  response.append("Content-Type: text/html; charset=UTF-8\n");
+  response.append(QDateTime::currentDateTime().toString());
+  socket->write(QDateTime::currentDateTime().toString().toUtf8());
+
+  socket->disconnectFromHost();
+//  socket
+
+//  Date: Mon, 23 May 2005 22:38:34 GMT
 }
 
 
