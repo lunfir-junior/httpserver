@@ -12,11 +12,11 @@ HttpServer::HttpServer(QObject *parent) : QTcpServer(parent)
   while(!in.atEnd()) {
     QString line = in.readLine().trimmed();
     QStringList list = line.split(' ', QString::SkipEmptyParts);
-    settings.insert(list.at(0), list.at(1));
+    m_settings.insert(list.at(0), list.at(1));
   }
   config.close();
 
-  if ( this->listen(QHostAddress(settings.value("address")), settings.value("port").toInt()) )
+  if ( this->listen(QHostAddress(m_settings.value("address")), m_settings.value("port").toInt()) )
     qDebug() << "server is listening...";
   else
     qDebug() << "error: " << this->errorString();
@@ -34,7 +34,7 @@ void HttpServer::incomingConnection(qintptr socketDescriptor)
 void HttpServer::slotReadyRead()
 {
   QTcpSocket *socket = (QTcpSocket*) sender();
-  QByteArray data = socket->readAll();
+  QList<QByteArray> data = socket->readAll().split(' ');
 
   qDebug().noquote() << "client data: " << data;
 
@@ -44,7 +44,8 @@ void HttpServer::slotReadyRead()
   response.append("Content-Type: text/html; charset=UTF-8\n");
   response.append(QDateTime::currentDateTime().toString());
 
-  QFile resp("/var/www/localhost/error.html");
+  QString path = m_settings.value("root_dir");
+  QFile resp(path.append("index.html"));
 
   if ( !resp.open(QIODevice::ReadOnly) )
       qDebug() << "resp error: ", resp.errorString();

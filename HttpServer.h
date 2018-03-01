@@ -19,6 +19,9 @@ public:
 protected:
   void incomingConnection(qintptr socketDescriptor);
 
+private:
+  QMap<QString, QString> m_settings;
+
 signals:
   void signalDestroyed();
 
