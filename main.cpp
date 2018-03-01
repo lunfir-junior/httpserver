@@ -7,7 +7,5 @@ int main(int argc, char *argv[])
 
   HttpServer server;
 
-  QObject::connect(&server, &HttpServer::signalDestroyed, &a, &QCoreApplication::quit);
-
   return a.exec();
 }

@@ -35,28 +35,58 @@ void HttpServer::slotReadyRead()
 {
   QTcpSocket *socket = (QTcpSocket*) sender();
   QList<QByteArray> data = socket->readAll().split(' ');
-
-  qDebug().noquote() << "client data: " << data;
-
-  /*%1*/
-  QString response = "HTTP/1.1 200 OK\nConnection: close\n";
-  response.append("Content-Length: 89\n");
-  response.append("Content-Type: text/html; charset=UTF-8\n");
-  response.append(QDateTime::currentDateTime().toString());
-
   QString path = m_settings.value("root_dir");
-  QFile resp(path.append("index.html"));
+  QByteArray content;
+  int contentLength;
 
-  if ( !resp.open(QIODevice::ReadOnly) )
-      qDebug() << "resp error: ", resp.errorString();
+  if ( data.at(0) != QString("GET").toUtf8() ) {
+    QFile resp(path.append("405.html"));
+    content = resp.readAll();
+    socket->write(content);
+    contentLength = content.size();
+    resp.close();
 
-  socket->write(resp.readAll());
-//  socket->write(QDateTime::currentDateTime().toString().toUtf8());
+    return;
+  }
 
+  QString responseFileName = QString(data.at(1));
+  responseFileName.remove(0, 1); // remove '/'
+
+  if ( responseFileName.isEmpty() )
+    responseFileName = QString("index.html");
+
+  QFile tryResponse(path.append(responseFileName));
+  content.clear();
+  if ( !tryResponse.open(QIODevice::ReadOnly) ) {
+    path = m_settings.value("root_dir");
+
+    QFile resp(path.append("404.html"));
+    resp.open(QIODevice::ReadOnly);
+    content = resp.readAll();
+    socket->write(content);
+    contentLength = content.size();
+    resp.close();
+  } else {
+    content = tryResponse.readAll();
+    socket->write(content);
+    contentLength = content.size();
+  }
+  tryResponse.close();
   socket->disconnectFromHost();
-//  socket
 
-//  Date: Mon, 23 May 2005 22:38:34 GMT
+  QString response = "HTTP/1.1 200 OK\nConnection: close\n";
+  response.append("Content-Length: " + QString::number(contentLength) + "\n");
+  response.append("Content-Type: text/html; charset=UTF-8\n");
+  response.append("Date: " + QDateTime::currentDateTime().toString() + "\n");
+
+  qDebug().noquote() << response;
+}
+
+void HttpServer::slotDisconnected()
+{
+  QTcpSocket *socket = (QTcpSocket*) sender();
+  socket->close();
+  socket->deleteLater();
 }
 
 

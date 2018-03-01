@@ -22,12 +22,9 @@ protected:
 private:
   QMap<QString, QString> m_settings;
 
-signals:
-  void signalDestroyed();
-
 public slots:
   void slotReadyRead();
-
+  void slotDisconnected();
 };
 
 #endif // HTTPSERVER_H
