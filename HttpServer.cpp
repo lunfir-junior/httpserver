@@ -19,13 +19,15 @@ HttpServer::HttpServer(QObject *parent) : QTcpServer(parent)
   if ( !content.open(QIODevice::ReadOnly) )
       qDebug() << "content error: ", content.errorString();
 
-//  QTextStream mime(&content);
-//  while(!mime.atEnd()) {
-//    QString line = mime.readLine().trimmed();
-//    QStringList list = line.split(' ', QString::SkipEmptyParts);
-//    m_contentTypes.insert(list.at(0), list.at(1));
-//  }
-//  content.close();
+  QTextStream mime(&content);
+  while(!mime.atEnd()) {
+    QString line = mime.readLine().trimmed();
+    if ( !line.isEmpty() ) {
+      QStringList list = line.split(QString("  "), QString::SkipEmptyParts);
+      m_contentTypes.insert(list.at(0), list.at(1));
+    }
+  }
+  content.close();
 
   if ( this->listen(QHostAddress(m_settings.value("address")), m_settings.value("port").toInt()) )
     qDebug() << "server is listening...";
@@ -49,14 +51,16 @@ void HttpServer::slotReadyRead()
   QString path = m_settings.value("root_dir");
   QByteArray content;
   QFile response;
-  QString responseFileName;
+  QString responseFileName, contentType, statusCode;
   int contentLength;
 
   if ( data.at(0) != QString("GET").toUtf8() ) {
-    response.setFileName(path.append("405.html"));
+    responseFileName = QString("405.html");
+    response.setFileName(path.append(responseFileName));
     response.open(QIODevice::ReadOnly);
     content = response.readAll();
     contentLength = content.size();
+    statusCode = QString("405 Method Not Allowed");
     response.close();
   } else {
     responseFileName = QString(data.at(1));
@@ -68,28 +72,44 @@ void HttpServer::slotReadyRead()
     response.setFileName(path.append(responseFileName));
     if ( !response.open(QIODevice::ReadOnly) ) {
       path = m_settings.value("root_dir");
-      response.setFileName(path.append("404.html"));
+      responseFileName = QString("404.html");
+      response.setFileName(path.append(responseFileName));
       response.open(QIODevice::ReadOnly);
       content = response.readAll();
       contentLength = content.size();
+      statusCode = QString("404 Not Found");
       response.close();
     } else {
       content = response.readAll();
       contentLength = content.size();
+      statusCode = QString("200 OK");
       response.close();
     }
   }
 
-//  QString response = "HTTP/1.1 200 OK\nConnection: close\n";
-//  response.append("Content-Length: " + QString::number(contentLength) + "\n");
-//  response.append("Content-Type: text/html; charset=UTF-8\n");
-//  response.append("Date: " + QDateTime::currentDateTime().toString() + "\r\n\r\n");
+  QString tmp = responseFileName.split('.').at(1);
 
-  socket->write(content);
+  if ( m_contentTypes.keys().contains(tmp) )
+    contentType = m_contentTypes.value(tmp);
+  else
+    contentType = QString("application/octet-stream");
+
+  QByteArray bytes;
+  bytes.push_back(QString("HTTP/1.1 ").toUtf8());
+  bytes.push_back(statusCode.toUtf8());
+  bytes.push_back(QString("\nConnection: close\nContent-Length: ").toUtf8());
+  bytes.push_back(QString::number(contentLength).toUtf8());
+  bytes.push_back(QString("\nContent-Type: ").toUtf8());
+  bytes.push_back(contentType.toUtf8());
+  bytes.push_back(QString("\nDate: ").toUtf8());
+  bytes.push_back(QDateTime::currentDateTime().toString().toUtf8() );
+  bytes.push_back(QString("\r\n\r\n").toUtf8());
+  bytes.push_back(content);
+
+  socket->write(bytes);
   socket->disconnectFromHost();
 
-
-//  qDebug().noquote() << response;
+//  qDebug().noquote() << bytes;
 }
 
 void HttpServer::slotDisconnected()
