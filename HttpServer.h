@@ -21,6 +21,7 @@ protected:
 
 private:
   QMap<QString, QString> m_settings;
+  QMap<QString, QString> m_contentTypes;
 
 public slots:
   void slotReadyRead();
